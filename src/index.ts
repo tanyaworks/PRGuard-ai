@@ -8,7 +8,7 @@ import * as fs from 'fs'
 dotenv.config()
 
 const app = express()
-const PORT = 3000
+const PORT = Number(process.env.PORT) || 3000
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 app.use(express.raw({ type: 'application/json' }))
