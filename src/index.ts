@@ -112,11 +112,12 @@ app.post('/webhook', async (req, res) => {
   const event = req.headers['x-github-event'] as string
   try {
     const payload = JSON.parse(req.body.toString())
-    if (event === 'pull_request' && payload.action === 'opened') {
+   if (event === 'pull_request' && payload.action === 'opened') {
+      res.status(200).send('OK')  // Respond immediately!
+      
       console.log('\n🔔 New PR opened!')
       console.log(`  Repo  : ${payload.repository.full_name}`)
       console.log(`  PR #  : ${payload.pull_request.number}`)
-      console.log(`  Title : ${payload.pull_request.title}`)
       console.log('\n⏳ Fetching diff and reviewing...\n')
 
       const [owner, repo] = payload.repository.full_name.split('/')
@@ -125,15 +126,12 @@ app.post('/webhook', async (req, res) => {
 
       const diff = await getDiff(owner, repo, payload.pull_request.number)
       const suggestions = await reviewCode(diff)
-
-      console.log('📝 Suggestions:', JSON.stringify(suggestions, null, 2))
-
       const octokit = getAuthenticatedOctokit(installationId)
       await postReview(octokit, owner, repo, payload.pull_request.number, commitSha, suggestions)
     } else {
       console.log(`📨 Event: ${event} (${payload.action || ''})`)
     }
-    res.status(200).send('OK')
+    
   } catch (err) {
     console.error('Error:', err)
     res.status(200).send('OK')
