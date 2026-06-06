@@ -10,7 +10,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 app.use(express.raw({ type: 'application/json' }))
 
 function getAuthenticatedOctokit(installationId: number) {
-  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n') 
+  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n')
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
