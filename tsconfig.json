@@ -4,8 +4,9 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "strict": true,
+    "strict": false,
     "outDir": "./dist",
+    "rootDir": "./src",
     "skipLibCheck": true
   },
   "include": ["src"]
