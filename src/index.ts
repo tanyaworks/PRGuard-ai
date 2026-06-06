@@ -52,7 +52,11 @@ Diff:\n${diff}`
 
 async function postReview(octokit: Octokit, owner: string, repo: string, pull_number: number, commitSha: string, suggestions: any[]) {
   if (suggestions.length === 0) {
-    await octokit.issues.createComment({ owner, repo, issue_number: pull_number, body: '## 🤖 AI Code Review\n\nNo issues found! ✅\n\n---\n*PRGuard-ai*' })
+    await octokit.issues.createComment({
+      owner, repo,
+      issue_number: pull_number,
+      body: '## 🤖 AI Code Review\n\nNo issues found! ✅\n\n---\n*PRGuard-ai*'
+    })
     return
   }
   await octokit.pulls.createReview({
@@ -60,7 +64,11 @@ async function postReview(octokit: Octokit, owner: string, repo: string, pull_nu
     commit_id: commitSha,
     event: 'COMMENT',
     body: '## 🤖 AI Code Review\n\n---\n*PRGuard-ai*',
-    comments: suggestions.map(s => ({ path: s.path, line: s.line, body: `${s.comment}\n\`\`\`suggestion\n${s.suggestion}\n\`\`\`` }))
+    comments: suggestions.map(s => ({
+      path: s.path,
+      line: s.line,
+      body: `${s.comment}\n\`\`\`suggestion\n${s.suggestion}\n\`\`\``
+    }))
   })
 }
 
