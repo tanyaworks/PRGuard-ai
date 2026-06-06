@@ -11,7 +11,6 @@ app.use(express.raw({ type: 'application/json' }))
 
 function getAuthenticatedOctokit(installationId: number) {
 const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n')  
-'base64').toString('utf8')
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
