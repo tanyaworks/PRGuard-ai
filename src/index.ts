@@ -10,7 +10,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 app.use(express.raw({ type: 'application/json' }))
 
 function getAuthenticatedOctokit(installationId: number) {
-  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n') 
+  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n')
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
@@ -33,43 +33,43 @@ async function getDiff(owner: string, repo: string, pull_number: number) {
 async function reviewCode(diff: string) {
   const completion = await groq.chat.completions.create({
     model: 'llama-3.1-8b-instant',
+    max_tokens: 1024,
     messages: [{
       role: 'user',
-      content: `You are a senior software engineer reviewing a pull request.
-Analyze the following code diff and return ONLY a JSON array. No other text.
-Each item: { "path": string, "line": number, "suggestion": string, "comment": string }
-If no suggestions, return [].
-Diff:\n${diff}`
+      content: `You are a senior software engineer doing a thorough code review.
+
+Review the following code diff and provide detailed feedback. Structure your response with these sections:
+
+## Summary
+Brief overview of what the PR does.
+
+## Issues Found
+List any bugs, errors, or problems. Be specific about file and line.
+
+## Security Concerns
+Any security vulnerabilities or risks.
+
+## Suggestions
+Improvements for code quality, performance, or readability.
+
+## Verdict
+APPROVE, REQUEST CHANGES, or COMMENT with a brief reason.
+
+Be specific, actionable, and helpful. If the change is minor (like a typo fix), keep the review short and positive.
+
+Diff:
+${diff}`
     }]
   })
-  const text = completion.choices[0].message.content || '[]'
-  try {
-    return JSON.parse(text.replace(/```json|```/g, '').trim())
-  } catch {
-    return []
-  }
+  return completion.choices[0].message.content || 'No review generated.'
 }
 
-async function postReview(octokit: Octokit, owner: string, repo: string, pull_number: number, commitSha: string, suggestions: any[]) {
-  if (suggestions.length === 0) {
-    await octokit.issues.createComment({ owner, repo, issue_number: pull_number, body: '## 🤖 AI Code Review\n\nNo issues found! ✅\n\n---\n*PRGuard-ai*' })
-    return
-  }
-  try {
-    await octokit.pulls.createReview({
-      owner, repo, pull_number,
-      commit_id: commitSha,
-      event: 'COMMENT',
-      body: '## 🤖 AI Code Review\n\n---\n*PRGuard-ai*',
-      comments: suggestions.map(s => ({ path: s.path, line: s.line, body: `${s.comment}\n\`\`\`suggestion\n${s.suggestion}\n\`\`\`` }))
-    })
-  } catch {
-    await octokit.issues.createComment({
-      owner, repo,
-      issue_number: pull_number,
-      body: `## 🤖 AI Code Review\n\n${suggestions.map(s => `**${s.path}**: ${s.comment}`).join('\n\n')}\n\n---\n*PRGuard-ai*`
-    })
-  }
+async function postReview(octokit: Octokit, owner: string, repo: string, pull_number: number, review: string) {
+  await octokit.issues.createComment({
+    owner, repo,
+    issue_number: pull_number,
+    body: `## 🤖 AI Code Review\n\n${review}\n\n---\n*Reviewed by PRGuard-ai*`
+  })
 }
 
 app.post('/webhook', (req, res) => {
@@ -81,12 +81,11 @@ app.post('/webhook', (req, res) => {
       console.log('🔔 New PR:', payload.pull_request.title)
       const [owner, repo] = payload.repository.full_name.split('/')
       const installationId = payload.installation.id
-      const commitSha = payload.pull_request.head.sha
       getDiff(owner, repo, payload.pull_request.number)
         .then(diff => reviewCode(diff))
-        .then(suggestions => {
+        .then(review => {
           const octokit = getAuthenticatedOctokit(installationId)
-          return postReview(octokit, owner, repo, payload.pull_request.number, commitSha, suggestions)
+          return postReview(octokit, owner, repo, payload.pull_request.number, review)
         })
         .then(() => console.log('✅ Review posted!'))
         .catch(err => console.error('Error:', err))
