@@ -10,7 +10,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 app.use(express.raw({ type: 'application/json' }))
 
 function getAuthenticatedOctokit(installationId: number) {
-  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n')
+  const privateKey = (process.env.GITHUB_PRIVATE_KEY || '').replace(/\\n/g, '\n') 
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
@@ -52,24 +52,24 @@ Diff:\n${diff}`
 
 async function postReview(octokit: Octokit, owner: string, repo: string, pull_number: number, commitSha: string, suggestions: any[]) {
   if (suggestions.length === 0) {
+    await octokit.issues.createComment({ owner, repo, issue_number: pull_number, body: '## 🤖 AI Code Review\n\nNo issues found! ✅\n\n---\n*PRGuard-ai*' })
+    return
+  }
+  try {
+    await octokit.pulls.createReview({
+      owner, repo, pull_number,
+      commit_id: commitSha,
+      event: 'COMMENT',
+      body: '## 🤖 AI Code Review\n\n---\n*PRGuard-ai*',
+      comments: suggestions.map(s => ({ path: s.path, line: s.line, body: `${s.comment}\n\`\`\`suggestion\n${s.suggestion}\n\`\`\`` }))
+    })
+  } catch {
     await octokit.issues.createComment({
       owner, repo,
       issue_number: pull_number,
-      body: '## 🤖 AI Code Review\n\nNo issues found! ✅\n\n---\n*PRGuard-ai*'
+      body: `## 🤖 AI Code Review\n\n${suggestions.map(s => `**${s.path}**: ${s.comment}`).join('\n\n')}\n\n---\n*PRGuard-ai*`
     })
-    return
   }
-  await octokit.pulls.createReview({
-    owner, repo, pull_number,
-    commit_id: commitSha,
-    event: 'COMMENT',
-    body: '## 🤖 AI Code Review\n\n---\n*PRGuard-ai*',
-    comments: suggestions.map(s => ({
-      path: s.path,
-      line: s.line,
-      body: `${s.comment}\n\`\`\`suggestion\n${s.suggestion}\n\`\`\``
-    }))
-  })
 }
 
 app.post('/webhook', (req, res) => {
