@@ -1,6 +1,7 @@
 import express from 'express'
 import Groq from 'groq-sdk'
 import { Octokit } from '@octokit/rest'
+import crypto from 'crypto'
 import { createAppAuth } from '@octokit/auth-app'
 
 const app = express()
@@ -73,6 +74,15 @@ async function postReview(octokit: Octokit, owner: string, repo: string, pull_nu
 }
 
 app.post('/webhook', (req, res) => {
+  const sig = req.headers['x-hub-signature-256'] as string
+  const secret = process.env.WEBHOOK_SECRET || ''
+  const hash = 'sha256=' + crypto.createHmac('sha256', secret).update(req.body).digest('hex')
+  
+  if (sig !== hash) {
+    console.log('❌ Invalid signature — request rejected')
+    return res.status(401).send('Unauthorized')
+  }
+
   res.status(200).send('OK')
   const event = req.headers['x-github-event'] as string
   try {
